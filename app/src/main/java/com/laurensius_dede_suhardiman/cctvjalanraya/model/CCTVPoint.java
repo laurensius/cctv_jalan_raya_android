@@ -6,6 +6,7 @@ public class CCTVPoint {
     String idRegion;
     String namaPoint;
     String urlStream;
+    String type;
 
     public CCTVPoint(){}
 
@@ -23,5 +24,9 @@ public class CCTVPoint {
 
     public String getUrlStream() {
         return urlStream;
+    }
+
+    public String getType() {
+        return type;
     }
 }

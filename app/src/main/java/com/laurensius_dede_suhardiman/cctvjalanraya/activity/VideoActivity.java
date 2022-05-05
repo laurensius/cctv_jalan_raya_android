@@ -9,10 +9,17 @@ import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
 import android.net.Uri;
+import android.net.http.SslError;
 import android.os.Bundle;
 import android.os.Handler;
 import android.util.Log;
 import android.view.View;
+import android.webkit.SslErrorHandler;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.TextView;
 
 import com.android.volley.Request;
@@ -20,8 +27,6 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.developer.kalert.KAlertDialog;
-import com.google.android.exoplayer2.DefaultLoadControl;
-import com.google.android.exoplayer2.DefaultRenderersFactory;
 import com.google.android.exoplayer2.DeviceInfo;
 import com.google.android.exoplayer2.ExoPlayer;
 import com.google.android.exoplayer2.MediaItem;
@@ -33,20 +38,10 @@ import com.google.android.exoplayer2.Timeline;
 import com.google.android.exoplayer2.TracksInfo;
 import com.google.android.exoplayer2.audio.AudioAttributes;
 import com.google.android.exoplayer2.metadata.Metadata;
-import com.google.android.exoplayer2.source.MediaSource;
-import com.google.android.exoplayer2.source.dash.DashMediaSource;
-import com.google.android.exoplayer2.source.hls.HlsMediaSource;
-import com.google.android.exoplayer2.source.rtsp.RtspMediaSource;
 import com.google.android.exoplayer2.text.Cue;
-import com.google.android.exoplayer2.trackselection.AdaptiveTrackSelection;
-import com.google.android.exoplayer2.trackselection.DefaultTrackSelector;
-import com.google.android.exoplayer2.trackselection.TrackSelection;
 import com.google.android.exoplayer2.trackselection.TrackSelectionParameters;
 import com.google.android.exoplayer2.ui.StyledPlayerControlView;
 import com.google.android.exoplayer2.ui.StyledPlayerView;
-import com.google.android.exoplayer2.upstream.DataSource;
-import com.google.android.exoplayer2.upstream.DefaultBandwidthMeter;
-import com.google.android.exoplayer2.upstream.DefaultHttpDataSource;
 import com.google.android.exoplayer2.video.VideoSize;
 import com.google.gson.Gson;
 import com.laurensius_dede_suhardiman.cctvjalanraya.R;
@@ -54,6 +49,7 @@ import com.laurensius_dede_suhardiman.cctvjalanraya.adapter.CCTVPointAdapter;
 import com.laurensius_dede_suhardiman.cctvjalanraya.controller.AppController;
 import com.laurensius_dede_suhardiman.cctvjalanraya.model.CCTVPoint;
 import com.laurensius_dede_suhardiman.cctvjalanraya.utilities.CustomListener;
+import com.marcoscg.ipcamview.IPCamView;
 
 import org.json.JSONArray;
 import org.json.JSONException;
@@ -62,8 +58,12 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+import javax.sql.RowSet;
+
 public class VideoActivity extends AppCompatActivity {
 
+
+    private static boolean mjpegViewPlaying;
     Intent intentIn;
     private static TextView tvJudul;
     private RecyclerView rvPoint;
@@ -71,10 +71,14 @@ public class VideoActivity extends AppCompatActivity {
     private RecyclerView.LayoutManager lmrvPoint;
     private List<CCTVPoint> cctvPointList;
 
-    private StyledPlayerView spvVideo;
+    private static StyledPlayerView spvVideo;
     private static ExoPlayer player;
 
     private Boolean isVideoFullscreen = false;
+
+    private static IPCamView ipcCCTV;
+
+    private static WebView wvCCTV;
 
     Player.Listener listener = new Player.Listener() {
         @Override
@@ -168,6 +172,18 @@ public class VideoActivity extends AppCompatActivity {
         @Override
         public void onPlayerError(PlaybackException error) {
             Player.Listener.super.onPlayerError(error);
+            KAlertDialog pDialog = new KAlertDialog(VideoActivity.this,KAlertDialog.ERROR_TYPE);
+            pDialog.setCancelable(false);
+            pDialog.setTitleText("Whooops . . .");
+            pDialog.setContentText("CCTV " + tvJudul.getText().toString() + " tidak dapat diakses atau sedang offline. Silakan coba beberapa saat lagi. Terima kasih!");
+            pDialog.setConfirmText("OK");
+            pDialog.setConfirmClickListener(new KAlertDialog.KAlertClickListener() {
+                @Override
+                public void onClick(KAlertDialog kAlertDialog) {
+                    kAlertDialog.dismiss();
+                }
+            });
+            pDialog.show();
         }
 
         @Override
@@ -266,6 +282,31 @@ public class VideoActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_video);
+        ipcCCTV = findViewById(R.id.ipcv_cctv);
+        wvCCTV = findViewById(R.id.wv_cctv);
+        wvCCTV.getSettings().setJavaScriptEnabled(true);
+        wvCCTV.getSettings().setAllowContentAccess(true);
+        wvCCTV.getSettings().setLoadWithOverviewMode(true);
+        wvCCTV.getSettings().setUseWideViewPort(true);
+        wvCCTV.setWebViewClient(new WebViewClient(){
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                super.onReceivedError(view, request, error);
+                wvCCTV.loadUrl("https://via.placeholder.com/1024x720.png?text=Video%20Tidak%20Tersedia.%20Silakan%20coba%20beberapa%20saat%20lagi.%20Terima%20kasih!");
+            }
+
+            @Override
+            public void onReceivedHttpError(WebView view, WebResourceRequest request, WebResourceResponse errorResponse) {
+                super.onReceivedHttpError(view, request, errorResponse);
+                wvCCTV.loadUrl("https://via.placeholder.com/1024x720.png?text=Video%20Tidak%20Tersedia.%20Silakan%20coba%20beberapa%20saat%20lagi.%20Terima%20kasih!");
+            }
+
+            @Override
+            public void onReceivedSslError(WebView view, SslErrorHandler handler, SslError error) {
+                super.onReceivedSslError(view, handler, error);
+                wvCCTV.loadUrl("https://via.placeholder.com/1024x720.png?text=Video%20Tidak%20Tersedia.%20Silakan%20coba%20beberapa%20saat%20lagi.%20Terima%20kasih!");
+            }
+        });
         tvJudul = findViewById(R.id.tv_judul);
         player = new ExoPlayer.Builder(VideoActivity.this).build();
         player.addListener(listener);
@@ -294,7 +335,7 @@ public class VideoActivity extends AppCompatActivity {
         rvPoint.addOnItemTouchListener(new CustomListener(VideoActivity.this, new CustomListener.OnItemClickListener() {
             @Override
             public void onItemClick(View childVew, int childAdapterPosition) {
-               reInitExoPlayer(cctvPointList.get(childAdapterPosition).getUrlStream(),cctvPointList.get(childAdapterPosition).getNamaPoint());
+               reInitPlayer(cctvPointList.get(childAdapterPosition).getType(),cctvPointList.get(childAdapterPosition).getUrlStream(),cctvPointList.get(childAdapterPosition).getNamaPoint());
             }
         }));
     }
@@ -340,8 +381,7 @@ public class VideoActivity extends AppCompatActivity {
                         cctvPointAdapter = new CCTVPointAdapter(VideoActivity.this,cctvPointList);
                         cctvPointAdapter.notifyDataSetChanged();
                         rvPoint.setAdapter(cctvPointAdapter);
-                        reInitExoPlayer(cctvPointList.get(0).getUrlStream(),cctvPointList.get(0).getNamaPoint());
-                        player.play();
+                        reInitPlayer(cctvPointList.get(0).getType(),cctvPointList.get(0).getUrlStream(),cctvPointList.get(0).getNamaPoint());
                     }catch (JSONException ex){
                         new KAlertDialog(VideoActivity.this,KAlertDialog.ERROR_TYPE)
                         .setTitleText("Error")
@@ -391,10 +431,30 @@ public class VideoActivity extends AppCompatActivity {
         player.pause();
     }
 
-    public static void reInitExoPlayer(String url,String judul){
-        MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
-        player.setMediaItem(mediaItem);
-        player.prepare();
+    public static void reInitPlayer(String type, String url,String judul){
+        if(type.equals("EXO")){
+            spvVideo.setVisibility(View.VISIBLE);
+            ipcCCTV.setVisibility(View.GONE);
+            wvCCTV.setVisibility(View.GONE);
+            MediaItem mediaItem = MediaItem.fromUri(Uri.parse(url));
+            player.setMediaItem(mediaItem);
+            player.prepare();
+            player.play();
+        }else
+        if(type.equals("NONEXO")){
+            spvVideo.setVisibility(View.GONE);
+            ipcCCTV.setVisibility(View.VISIBLE);
+            wvCCTV.setVisibility(View.GONE);
+            ipcCCTV.stop();
+            ipcCCTV.setUrl(url);
+            ipcCCTV.start();
+        }else
+        if(type.equals("WEB")){
+            spvVideo.setVisibility(View.GONE);
+            ipcCCTV.setVisibility(View.GONE);
+            wvCCTV.setVisibility(View.VISIBLE);
+            wvCCTV.loadUrl(url);
+        }
         VideoActivity.tvJudul.setText(judul);
     }
 

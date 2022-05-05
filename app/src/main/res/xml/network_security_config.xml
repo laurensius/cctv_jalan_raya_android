@@ -7,5 +7,9 @@
         <domain includeSubdomains="true">jasamargalive.com</domain>
         <domain includeSubdomains="true">124.158.171.226</domain>
         <domain includeSubdomains="true">103.105.64.163</domain>
+        <domain includeSubdomains="true">103.145.128.242</domain>
+        <domain includeSubdomains="true">202.137.10.179</domain>
+        <domain includeSubdomains="true">36.95.126.105</domain>
+        <domain includeSubdomains="true">203.153.121.66</domain>
     </domain-config>
 </network-security-config>

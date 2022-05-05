@@ -9,6 +9,17 @@
     android:background="#FFFFFF"
     tools:context=".activity.VideoActivity">
 
+    <WebView
+        android:id="@+id/wv_cctv"
+        android:layout_width="match_parent"
+        android:layout_height="250dp"/>
+
+    <com.marcoscg.ipcamview.IPCamView
+        android:id="@+id/ipcv_cctv"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:adjustViewBounds="true"/>
+
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content">
